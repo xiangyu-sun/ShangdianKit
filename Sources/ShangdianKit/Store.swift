@@ -1,37 +1,14 @@
+import Combine
 import Foundation
 import StoreKit
-import Combine
-
-public typealias Transaction = StoreKit.Transaction
-public typealias RenewalInfo = StoreKit.Product.SubscriptionInfo.RenewalInfo
-public typealias RenewalState = StoreKit.Product.SubscriptionInfo.RenewalState
 
 public typealias ProdictID = String
 
-// MARK: - StoreError
-
-public enum StoreError: Error {
-  case failedVerification
-}
-
 // MARK: - Store
 
-public final class Store: ObservableObject {
-  
-  public struct SubscriptionTier: Comparable {
-    let id: String
-    let rank: Int
-    
-    static let empty = SubscriptionTier(id: "", rank: 0)
-    
-    public static func < (lhs: Self, rhs: Self) -> Bool {
-      lhs.rank < rhs.rank
-    }
-  }
+public class Store: StoreProtocol {
 
   // MARK: Lifecycle
-  
-  private let subscriptionTiers: [SubscriptionTier]
 
   init() {
     if
@@ -39,14 +16,14 @@ public final class Store: ObservableObject {
       let plist = FileManager.default.contents(atPath: path)
     {
       productList = (try? PropertyListSerialization.propertyList(from: plist, format: nil) as? [String: Int]) ?? [:]
-      
-      subscriptionTiers = productList.map{ SubscriptionTier(id: $0.key, rank: $0.value) }
+
+      subscriptionTiers = productList.map { SubscriptionTier(id: $0.key, rank: $0.value) }
     } else {
       productList = [:]
       subscriptionTiers = []
       print("product list not found")
     }
-    
+
     // Initialize empty products then do a product request asynchronously to fill them in.
     subscriptions = []
 
@@ -62,7 +39,18 @@ public final class Store: ObservableObject {
     updateListenerTask?.cancel()
   }
 
-  // MARK: Internal
+  // MARK: Public
+
+  public struct SubscriptionTier: Comparable {
+    let id: String
+    let rank: Int
+
+    static let empty = SubscriptionTier(id: "", rank: 0)
+
+    public static func < (lhs: Self, rhs: Self) -> Bool {
+      lhs.rank < rhs.rank
+    }
+  }
 
   public static let current = Store()
 
@@ -71,54 +59,6 @@ public final class Store: ObservableObject {
 
   @Published
   public private(set) var purchasedIdentifiers = Set<String>()
-
-  var updateListenerTask: Task<Void, Error>? = nil
-
-  func listenForTransactions() -> Task<Void, Error> {
-    Task.detached {
-      // Iterate through any transactions which didn't come from a direct call to `purchase()`.
-      for await result in Transaction.updates {
-        do {
-          let transaction = try self.checkVerified(result)
-
-          // Deliver content to the user.
-          await self.updatePurchasedIdentifiers(transaction)
-
-          // Always finish a transaction.
-          await transaction.finish()
-        } catch {
-          // StoreKit has a receipt it can read but it failed verification. Don't deliver content to the user.
-          print("Transaction failed verification")
-        }
-      }
-    }
-  }
-
-  @MainActor
-  func requestProducts() async {
-    do {
-      // Request products from the App Store using the identifiers defined in the Products.plist file.
-      let storeProducts = try await Product.products(for: productList.keys)
-
-      var newSubscriptions: [Product] = []
-
-      // Filter the products into different categories based on their type.
-      for product in storeProducts {
-        switch product.type {
-        case .autoRenewable:
-          newSubscriptions.append(product)
-        default:
-          // Ignore this product.
-          print("Unknown product")
-        }
-      }
-
-      // Sort each product category by price, lowest to highest, to update the store.
-      subscriptions = sortByPrice(newSubscriptions)
-    } catch {
-      print("Failed product request: \(error)")
-    }
-  }
 
   public func purchase(_ product: Product) async throws -> Transaction? {
     // Begin a purchase.
@@ -171,17 +111,6 @@ public final class Store: ObservableObject {
     }
   }
 
-  @MainActor
-  func updatePurchasedIdentifiers(_ transaction: Transaction) async {
-    if transaction.revocationDate == nil {
-      // If the App Store has not revoked the transaction, add it to the list of `purchasedIdentifiers`.
-      purchasedIdentifiers.insert(transaction.productID)
-    } else {
-      // If the App Store has revoked this transaction, remove it from the list of `purchasedIdentifiers`.
-      purchasedIdentifiers.remove(transaction.productID)
-    }
-  }
-
   public func eligibleForIntro(product: Product) async throws -> Bool {
     guard let renewableSubscription = product.subscription else {
       // No renewable subscription is available for this product.
@@ -194,14 +123,78 @@ public final class Store: ObservableObject {
     return false
   }
 
+  public func tier(for productId: String) -> SubscriptionTier {
+    subscriptionTiers.first { $0.id == productId } ?? .empty
+  }
+
+  // MARK: Internal
+
+  var updateListenerTask: Task<Void, Error>? = nil
+
+  func listenForTransactions() -> Task<Void, Error> {
+    Task.detached {
+      // Iterate through any transactions which didn't come from a direct call to `purchase()`.
+      for await result in Transaction.updates {
+        do {
+          let transaction = try self.checkVerified(result)
+
+          // Deliver content to the user.
+          await self.updatePurchasedIdentifiers(transaction)
+
+          // Always finish a transaction.
+          await transaction.finish()
+        } catch {
+          // StoreKit has a receipt it can read but it failed verification. Don't deliver content to the user.
+          print("Transaction failed verification")
+        }
+      }
+    }
+  }
+
+  @MainActor
+  func requestProducts() async {
+    do {
+      // Request products from the App Store using the identifiers defined in the Products.plist file.
+      let storeProducts = try await Product.products(for: productList.keys)
+
+      var newSubscriptions: [Product] = []
+
+      // Filter the products into different categories based on their type.
+      for product in storeProducts {
+        switch product.type {
+        case .autoRenewable:
+          newSubscriptions.append(product)
+        default:
+          // Ignore this product.
+          print("Unknown product")
+        }
+      }
+
+      // Sort each product category by price, lowest to highest, to update the store.
+      subscriptions = sortByPrice(newSubscriptions)
+    } catch {
+      print("Failed product request: \(error)")
+    }
+  }
+
+  @MainActor
+  func updatePurchasedIdentifiers(_ transaction: Transaction) async {
+    if transaction.revocationDate == nil {
+      // If the App Store has not revoked the transaction, add it to the list of `purchasedIdentifiers`.
+      purchasedIdentifiers.insert(transaction.productID)
+    } else {
+      // If the App Store has revoked this transaction, remove it from the list of `purchasedIdentifiers`.
+      purchasedIdentifiers.remove(transaction.productID)
+    }
+  }
+
   func sortByPrice(_ products: [Product]) -> [Product] {
     products.sorted(by: { $0.price < $1.price })
   }
 
-  public func tier(for productId: String) -> SubscriptionTier {
-    subscriptionTiers.first{ $0.id == productId} ?? .empty
-  }
+  // MARK: Private
 
+  private let subscriptionTiers: [SubscriptionTier]
 
   private let productList: [String: Int]
 }
