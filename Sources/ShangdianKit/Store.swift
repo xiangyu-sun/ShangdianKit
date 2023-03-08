@@ -171,7 +171,8 @@ public class Store: StoreProtocol {
       }
 
       // Sort each product category by price, lowest to highest, to update the store.
-      subscriptions = sortByPrice(newSubscriptions)
+      subscriptions.removeAll()
+      subscriptions.append(contentsOf: sortByPrice(newSubscriptions))
       print("recieved \(subscriptions)")
     } catch {
       print("Failed product request: \(error)")
