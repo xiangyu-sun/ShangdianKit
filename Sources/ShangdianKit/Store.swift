@@ -127,6 +127,72 @@ public class Store: StoreProtocol {
     subscriptionTiers.first { $0.id == productId } ?? .empty
   }
 
+  public func getPurchasedVerifiedProducts(type: Product.ProductType) async -> [Product] {
+    var purchasedSubscriptions: [Product] = []
+
+    // Iterate through all of the user's purchased products.
+    for await result in Transaction.currentEntitlements {
+      // Don't operate on this transaction if it's not verified.
+      if case .verified(let transaction) = result {
+        // Check the `productType` of the transaction and get the corresponding product from the store.
+
+        if let subscription = subscriptions.first(where: { $0.id == transaction.productID }), transaction.productType == type {
+          purchasedSubscriptions.append(subscription)
+        }
+      }
+    }
+
+    return purchasedSubscriptions
+  }
+
+  @MainActor
+  public func updateSubscriptionStatus() async throws -> (Product.SubscriptionInfo.Status?, Product?) {
+    // This app has only one subscription group so products in the subscriptions
+    // array all belong to the same group. The statuses returned by
+    // `product.subscription.status` apply to the entire subscription group.
+    guard
+      let product = subscriptions.first,
+      let statuses = try await product.subscription?.status else
+    {
+      return (nil, nil)
+    }
+
+    var highestStatus: Product.SubscriptionInfo.Status? = nil
+    var highestProduct: Product? = nil
+
+    // Iterate through `statuses` for this subscription group and find
+    // the `Status` with the highest level of service which isn't
+    // expired or revoked.
+    for status in statuses {
+      switch status.state {
+      case .expired, .revoked:
+        continue
+      default:
+        let renewalInfo = try checkVerified(status.renewalInfo)
+
+        guard let newSubscription = subscriptions.first(where: { $0.id == renewalInfo.currentProductID }) else {
+          continue
+        }
+
+        guard let currentProduct = highestProduct else {
+          highestStatus = status
+          highestProduct = newSubscription
+          continue
+        }
+
+        let highestTier = tier(for: currentProduct.id)
+        let newTier = tier(for: renewalInfo.currentProductID)
+
+        if newTier > highestTier {
+          highestStatus = status
+          highestProduct = newSubscription
+        }
+      }
+    }
+
+    return (highestStatus, highestProduct)
+  }
+
   // MARK: Internal
 
   var updateListenerTask: Task<Void, Error>? = nil
@@ -176,72 +242,6 @@ public class Store: StoreProtocol {
     } catch {
       print("Failed product request: \(error)")
     }
-  }
-  
-  public func getPurchasedVerifiedProducts(type: Product.ProductType) async -> [Product] {
-    var purchasedSubscriptions: [Product] = []
-
-    // Iterate through all of the user's purchased products.
-    for await result in Transaction.currentEntitlements {
-      // Don't operate on this transaction if it's not verified.
-      if case .verified(let transaction) = result {
-        // Check the `productType` of the transaction and get the corresponding product from the store.
-        
-        if let subscription = subscriptions.first(where: { $0.id == transaction.productID }),  transaction.productType == type {
-          purchasedSubscriptions.append(subscription)
-        }
-      }
-    }
-    
-    return purchasedSubscriptions
-  }
-  
-  @MainActor
-  public func updateSubscriptionStatus() async throws -> (Product.SubscriptionInfo.Status?, Product?) {
-    // This app has only one subscription group so products in the subscriptions
-    // array all belong to the same group. The statuses returned by
-    // `product.subscription.status` apply to the entire subscription group.
-    guard
-      let product = subscriptions.first,
-      let statuses = try await product.subscription?.status else
-    {
-      return (nil, nil)
-    }
-    
-    var highestStatus: Product.SubscriptionInfo.Status? = nil
-    var highestProduct: Product? = nil
-    
-    // Iterate through `statuses` for this subscription group and find
-    // the `Status` with the highest level of service which isn't
-    // expired or revoked.
-    for status in statuses {
-      switch status.state {
-      case .expired, .revoked:
-        continue
-      default:
-        let renewalInfo = try checkVerified(status.renewalInfo)
-        
-        guard let newSubscription = subscriptions.first(where: { $0.id == renewalInfo.currentProductID }) else {
-          continue
-        }
-        
-        guard let currentProduct = highestProduct else {
-          highestStatus = status
-          highestProduct = newSubscription
-          continue
-        }
-        
-        let highestTier = tier(for: currentProduct.id)
-        let newTier = tier(for: renewalInfo.currentProductID)
-        
-        if newTier > highestTier {
-          highestStatus = status
-          highestProduct = newSubscription
-        }
-      }
-    }
-    
-    return (highestStatus, highestProduct)
   }
 
   @MainActor
