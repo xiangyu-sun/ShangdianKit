@@ -178,6 +178,24 @@ public class Store: StoreProtocol {
     }
   }
   
+  public func getPurchasedVerifiedProducts(type: Product.ProductType) async -> [Product] {
+    var purchasedSubscriptions: [Product] = []
+
+    // Iterate through all of the user's purchased products.
+    for await result in Transaction.currentEntitlements {
+      // Don't operate on this transaction if it's not verified.
+      if case .verified(let transaction) = result {
+        // Check the `productType` of the transaction and get the corresponding product from the store.
+        
+        if let subscription = subscriptions.first(where: { $0.id == transaction.productID }),  transaction.productType == type {
+          purchasedSubscriptions.append(subscription)
+        }
+      }
+    }
+    
+    return purchasedSubscriptions
+  }
+  
   @MainActor
   public func updateSubscriptionStatus() async throws -> (Product.SubscriptionInfo.Status?, Product?) {
     // This app has only one subscription group so products in the subscriptions
