@@ -141,6 +141,12 @@ public class Store: StoreProtocol {
         }
       }
     }
+    
+    if purchasedSubscriptions.isEmpty {
+      for await result in Transaction.all {
+        print(result)
+      }
+    }
 
     return purchasedSubscriptions
   }
