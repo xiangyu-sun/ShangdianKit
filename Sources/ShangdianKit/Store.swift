@@ -32,6 +32,8 @@ public class Store: StoreProtocol {
     
     Task {
       await requestProducts()
+
+      try? await updateCustomerProductStatus(type: .autoRenewable)
     }
   }
   
@@ -70,7 +72,8 @@ public class Store: StoreProtocol {
       let transaction = try checkVerified(verification)
       
       // Deliver content to the user.
-      await updatePurchasedIdentifiers(transaction)
+      try await updateCustomerProductStatus(type: product.type)
+      await self.updatePurchasedIdentifiers(transaction)
       
       // Always finish a transaction.
       await transaction.finish()
@@ -188,6 +191,7 @@ public class Store: StoreProtocol {
           let transaction = try self.checkVerified(result)
           
           // Deliver content to the user.
+          try await self.updateCustomerProductStatus(type: .autoRenewable)
           await self.updatePurchasedIdentifiers(transaction)
           
           // Always finish a transaction.
