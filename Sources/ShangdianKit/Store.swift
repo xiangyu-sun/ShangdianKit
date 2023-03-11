@@ -242,18 +242,6 @@ public class Store: StoreProtocol {
   public func updateCustomerProductStatus(type: Product.ProductType) async throws {
     var purchasedSubscriptions: [Product] = []
     
-    // Iterate through all of the user's purchased products.
-    for await result in Transaction.currentEntitlements {
-      // Don't operate on this transaction if it's not verified.
-      if case .verified(let transaction) = result {
-        // Check the `productType` of the transaction and get the corresponding product from the store.
-        
-        if let subscription = subscriptions.first(where: { $0.id == transaction.productID }), transaction.productType == type {
-          purchasedSubscriptions.append(subscription)
-        }
-      }
-    }
-    
     //Iterate through all of the user's purchased products.
     for await result in Transaction.currentEntitlements {
       //Check whether the transaction is verified. If it isn’t, catch `failedVerification` error.
