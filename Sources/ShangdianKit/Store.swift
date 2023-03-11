@@ -10,7 +10,7 @@ public class Store: StoreProtocol {
   
   // MARK: Lifecycle
   
-  init() {
+  public init() {
     if
       let path = Bundle.main.path(forResource: "Products", ofType: "plist"),
       let plist = FileManager.default.contents(atPath: path)
@@ -52,16 +52,14 @@ public class Store: StoreProtocol {
     }
   }
   
-  public static let current = Store()
-  
   @Published
   public private(set) var subscriptions: [Product]
   
   @Published
   public private(set) var purchasedIdentifiers = Set<String>()
   
-  @Published private(set) var purchasedSubscriptions: [Product] = []
-  @Published private(set) var subscriptionGroupStatus: RenewalState?
+  @Published public private(set) var purchasedSubscriptions: [Product] = []
+  @Published public private(set) var subscriptionGroupStatus: RenewalState?
   
   public func purchase(_ product: Product) async throws -> Transaction? {
     // Begin a purchase.
