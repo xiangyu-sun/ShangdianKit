@@ -7,7 +7,7 @@ public typealias RenewalState = StoreKit.Product.SubscriptionInfo.RenewalState
 
 // MARK: - StoreProtocol
 
-public protocol StoreProtocol: ObservableObject {
+public protocol StoreProtocol {
 
   var subscriptions: [Product] { get }
 

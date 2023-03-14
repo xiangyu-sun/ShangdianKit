@@ -6,13 +6,15 @@ public typealias ProdictID = String
 
 // MARK: - Store
 
-public class Store: StoreProtocol {
+public class Store: ObservableObject, StoreProtocol {
   
   // MARK: Lifecycle
   
-  public init() {
+  public init(configuration: Configuration) {
+    self.configuration = configuration
+    
     if
-      let path = Bundle.main.path(forResource: "Products", ofType: "plist"),
+      let path = Bundle.main.path(forResource: configuration.productPlistName, ofType: "plist"),
       let plist = FileManager.default.contents(atPath: path)
     {
       productList = (try? PropertyListSerialization.propertyList(from: plist, format: nil) as? [String: Int]) ?? [:]
@@ -31,9 +33,13 @@ public class Store: StoreProtocol {
     updateListenerTask = listenForTransactions()
     
     Task {
-      await requestProducts()
-
-      try? await updateCustomerProductStatus(type: .autoRenewable)
+      do {
+        try await requestProducts()
+        
+        try await updateCustomerProductStatus(type: .autoRenewable)
+      } catch {
+        print(error)
+      }
     }
   }
   
@@ -42,6 +48,10 @@ public class Store: StoreProtocol {
   }
   
   // MARK: Public
+  
+  public struct Configuration {
+    let productPlistName: String
+  }
   
   public struct SubscriptionTier: Comparable {
     let id: String
@@ -60,8 +70,10 @@ public class Store: StoreProtocol {
   @Published
   public private(set) var purchasedIdentifiers = Set<String>()
   
-  @Published public private(set) var purchasedSubscriptions: [Product] = []
-  @Published public private(set) var subscriptionGroupStatus: RenewalState?
+  @Published
+  public private(set) var purchasedSubscriptions: [Product] = []
+  @Published
+  public private(set) var subscriptionGroupStatus: RenewalState?
   
   public func purchase(_ product: Product) async throws -> Transaction? {
     // Begin a purchase.
@@ -73,7 +85,7 @@ public class Store: StoreProtocol {
       
       // Deliver content to the user.
       try await updateCustomerProductStatus(type: product.type)
-      await self.updatePurchasedIdentifiers(transaction)
+      await updatePurchasedIdentifiers(transaction)
       
       // Always finish a transaction.
       await transaction.finish()
@@ -179,7 +191,33 @@ public class Store: StoreProtocol {
     return (highestStatus, highestProduct)
   }
   
+  @MainActor
+  public func updateCustomerProductStatus(type: Product.ProductType) async throws {
+    var purchasedSubscriptions: [Product] = []
+    
+    // Iterate through all of the user's purchased products.
+    for await result in Transaction.currentEntitlements {
+      // Check whether the transaction is verified. If it isn’t, catch `failedVerification` error.
+      let transaction = try checkVerified(result)
+      
+      if let subscription = subscriptions.first(where: { $0.id == transaction.productID }), transaction.productType == type {
+        purchasedSubscriptions.append(subscription)
+      }
+    }
+    
+    // Update the store information with auto-renewable subscription products.
+    self.purchasedSubscriptions = purchasedSubscriptions
+    
+    // Check the `subscriptionGroupStatus` to learn the auto-renewable subscription state to determine whether the customer
+    // is new (never subscribed), active, or inactive (expired subscription). This app has only one subscription
+    // group, so products in the subscriptions array all belong to the same group. The statuses that
+    // `product.subscription.status` returns apply to the entire subscription group.
+    subscriptionGroupStatus = try await subscriptions.first?.subscription?.status.first?.state
+  }
+  
   // MARK: Internal
+  
+  let configuration: Configuration
   
   var updateListenerTask: Task<Void, Error>? = nil
   
@@ -205,30 +243,26 @@ public class Store: StoreProtocol {
   }
   
   @MainActor
-  func requestProducts() async {
-    do {
-      // Request products from the App Store using the identifiers defined in the Products.plist file.
-      let storeProducts = try await Product.products(for: productList.keys)
-      
-      var newSubscriptions: [Product] = []
-      
-      // Filter the products into different categories based on their type.
-      for product in storeProducts {
-        switch product.type {
-        case .autoRenewable:
-          newSubscriptions.append(product)
-        default:
-          // Ignore this product.
-          print("Unknown product")
-        }
+  func requestProducts() async throws {
+    // Request products from the App Store using the identifiers defined in the Products.plist file.
+    let storeProducts = try await Product.products(for: productList.keys)
+    
+    var newSubscriptions: [Product] = []
+    
+    // Filter the products into different categories based on their type.
+    for product in storeProducts {
+      switch product.type {
+      case .autoRenewable:
+        newSubscriptions.append(product)
+      default:
+        // Ignore this product.
+        print("Unknown product")
       }
-      
-      // Sort each product category by price, lowest to highest, to update the store.
-      subscriptions = sortByPrice(newSubscriptions)
-      print("recieved \(subscriptions)")
-    } catch {
-      print("Failed product request: \(error)")
     }
+    
+    // Sort each product category by price, lowest to highest, to update the store.
+    subscriptions = sortByPrice(newSubscriptions)
+    print("recieved \(subscriptions)")
   }
   
   @MainActor
@@ -240,31 +274,6 @@ public class Store: StoreProtocol {
       // If the App Store has revoked this transaction, remove it from the list of `purchasedIdentifiers`.
       purchasedIdentifiers.remove(transaction.productID)
     }
-  }
-  
-  @MainActor
-  public func updateCustomerProductStatus(type: Product.ProductType) async throws {
-    var purchasedSubscriptions: [Product] = []
-    
-    //Iterate through all of the user's purchased products.
-    for await result in Transaction.currentEntitlements {
-      //Check whether the transaction is verified. If it isn’t, catch `failedVerification` error.
-      let transaction = try checkVerified(result)
-      
-      if let subscription = subscriptions.first(where: { $0.id == transaction.productID }), transaction.productType == type {
-        purchasedSubscriptions.append(subscription)
-      }
-    }
-    
-    
-    //Update the store information with auto-renewable subscription products.
-    self.purchasedSubscriptions = purchasedSubscriptions
-    
-    //Check the `subscriptionGroupStatus` to learn the auto-renewable subscription state to determine whether the customer
-    //is new (never subscribed), active, or inactive (expired subscription). This app has only one subscription
-    //group, so products in the subscriptions array all belong to the same group. The statuses that
-    //`product.subscription.status` returns apply to the entire subscription group.
-    subscriptionGroupStatus = try await subscriptions.first?.subscription?.status.first?.state
   }
   
   func sortByPrice(_ products: [Product]) -> [Product] {
