@@ -1,7 +1,7 @@
 import StoreKit
 
-public extension Product {
-  var subscribeText: String {
+extension Product {
+  public var subscribeText: String {
     guard let subscription else {
       return "unknow"
     }
@@ -28,8 +28,8 @@ public extension Product {
   }
 }
 
-public extension Product.SubscriptionOffer {
-  var subscribeText: String {
+extension Product.SubscriptionOffer {
+  public var subscribeText: String {
     let unit: String
     switch period.unit {
     case .day:

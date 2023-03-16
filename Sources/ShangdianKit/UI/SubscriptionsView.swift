@@ -1,22 +1,11 @@
 import StoreKit
 import SwiftUI
 
+// MARK: - SubscriptionsView
+
 public struct SubscriptionsView: View {
 
-  // MARK: Internal
-
-  @EnvironmentObject var store: Store
-
-  @State var currentSubscription: Product?
-  @State var status: Product.SubscriptionInfo.Status?
-  @State var hasOffer = false
-
-  @State var isShowingError = false
-  @StateObject var purchaseModel: PurchaseModel = .init()
-
-  var availableSubscriptions: [Product] {
-    store.subscriptions.filter { $0.id != currentSubscription?.id }
-  }
+  // MARK: Public
 
   public var body: some View {
     Group {
@@ -28,7 +17,6 @@ public struct SubscriptionsView: View {
             StatusInfoView(
               product: currentSubscription,
               status: status)
-            
           }
         }
         .listStyle(GroupedListStyle())
@@ -84,6 +72,20 @@ public struct SubscriptionsView: View {
     })
   }
 
+  // MARK: Internal
+
+  @EnvironmentObject var store: Store
+
+  @State var currentSubscription: Product?
+  @State var status: Product.SubscriptionInfo.Status?
+  @State var hasOffer = false
+
+  @State var isShowingError = false
+  @StateObject var purchaseModel: PurchaseModel = .init()
+
+  var availableSubscriptions: [Product] {
+    store.subscriptions.filter { $0.id != currentSubscription?.id }
+  }
 
   @MainActor
   func updateOffer() async {
@@ -100,8 +102,8 @@ public struct SubscriptionsView: View {
   @MainActor
   func updateSubscriptionStatus() async {
     do {
-      let (highestStatus, highestProduct) =  try await store.updateSubscriptionStatus()
-     
+      let (highestStatus, highestProduct) = try await store.updateSubscriptionStatus()
+
       status = highestStatus
       currentSubscription = highestProduct
     } catch {
@@ -117,10 +119,11 @@ public struct SubscriptionsView: View {
 
 }
 
+// MARK: - SubscriptionsView_Previews
 
 struct SubscriptionsView_Previews: PreviewProvider {
   static var previews: some View {
-    List() {
+    List {
       SubscriptionsView()
         .environmentObject(Store(configuration: .init(productPlistName: "Products")))
     }

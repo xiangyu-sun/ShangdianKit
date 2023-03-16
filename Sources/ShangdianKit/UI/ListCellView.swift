@@ -4,21 +4,13 @@ import SwiftUI
 public struct ListCellView: View {
 
   // MARK: Lifecycle
-  
+
   public init(product: Product, purchasingEnabled: Bool = true) {
     self.product = product
     self.purchasingEnabled = purchasingEnabled
   }
 
-  // MARK: Internal
-
-  @EnvironmentObject var store: Store
-
-  @State var isShowingError = false
-  @StateObject var purchaseModel: PurchaseModel = .init()
-
-  let product: Product
-  let purchasingEnabled: Bool
+  // MARK: Public
 
   public var body: some View {
     HStack {
@@ -42,6 +34,16 @@ public struct ListCellView: View {
       Alert(title: Text(purchaseModel.errorTitle ?? ""), message: nil, dismissButton: .default(Text("Okay")))
     })
   }
+
+  // MARK: Internal
+
+  @EnvironmentObject var store: Store
+
+  @State var isShowingError = false
+  @StateObject var purchaseModel: PurchaseModel = .init()
+
+  let product: Product
+  let purchasingEnabled: Bool
 
   @ViewBuilder
   var productDetail: some View {
@@ -86,7 +88,6 @@ public struct ListCellView: View {
               purchaseModel.isPurchased = false
             default:
               purchaseModel.isPurchased = try await store.isPurchased(product.id)
-              
             }
           }
         } catch {
@@ -94,7 +95,7 @@ public struct ListCellView: View {
         }
       }
     }
-    .onChange(of: purchaseModel.errorTitle) { identifiers in
+    .onChange(of: purchaseModel.errorTitle) { _ in
       isShowingError.toggle()
     }
   }

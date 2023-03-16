@@ -5,12 +5,7 @@ import SwiftUI
 
 public struct StatusInfoView: View {
 
-  // MARK: Internal
-
-  @EnvironmentObject var store: Store
-
-  let product: Product
-  let status: Product.SubscriptionInfo.Status
+  // MARK: Public
 
   public var body: some View {
     Text(statusDescription())
@@ -21,6 +16,13 @@ public struct StatusInfoView: View {
       .cornerRadius(12)
       .frame(maxWidth: .infinity, alignment: .center)
   }
+
+  // MARK: Internal
+
+  @EnvironmentObject var store: Store
+
+  let product: Product
+  let status: Product.SubscriptionInfo.Status
 
   // MARK: Fileprivate
 
@@ -47,7 +49,10 @@ public struct StatusInfoView: View {
       }
     case .revoked:
       if let revokedDate = transaction.revocationDate {
-        description = String.localizedStringWithFormat(NSLocalizedString("The App Store refunded your subscription to %1$@ on %2$@.", comment: ""), product.displayName, revokedDate.formattedDate())
+        description = String.localizedStringWithFormat(
+          NSLocalizedString("The App Store refunded your subscription to %1$@ on %2$@.", comment: ""),
+          product.displayName,
+          revokedDate.formattedDate())
       }
     case .inGracePeriod:
       description = gracePeriodDescription(renewalInfo)
@@ -64,14 +69,22 @@ public struct StatusInfoView: View {
   }
 
   fileprivate func billingRetryDescription() -> String {
-    let description =  String.localizedStringWithFormat(NSLocalizedString("The App Store could not confirm your billing information for %1$@. Please verify your billing information to resume service.", comment: ""), product.displayName)
+    let description = String.localizedStringWithFormat(
+      NSLocalizedString(
+        "The App Store could not confirm your billing information for %1$@. Please verify your billing information to resume service.",
+        comment: ""),
+      product.displayName)
     return description
   }
 
   fileprivate func gracePeriodDescription(_ renewalInfo: RenewalInfo) -> String {
-    var description = String.localizedStringWithFormat(NSLocalizedString("The App Store could not confirm your billing information for %1$@.", comment: ""), product.displayName)
+    var description = String.localizedStringWithFormat(
+      NSLocalizedString("The App Store could not confirm your billing information for %1$@.", comment: ""),
+      product.displayName)
     if let untilDate = renewalInfo.gracePeriodExpirationDate {
-      description += String.localizedStringWithFormat(NSLocalizedString(" Please verify your billing information to continue service after %1$@.", comment: ""),untilDate.formattedDate())
+      description += String.localizedStringWithFormat(
+        NSLocalizedString(" Please verify your billing information to continue service after %1$@.", comment: ""),
+        untilDate.formattedDate())
     }
 
     return description
@@ -86,10 +99,17 @@ public struct StatusInfoView: View {
 
     if let newProductID = renewalInfo.autoRenewPreference {
       if let newProduct = store.subscriptions.first(where: { $0.id == newProductID }) {
-        description += String.localizedStringWithFormat(NSLocalizedString("\nYour subscription to %1$@ will begin when your current subscription expires on %2$@.", comment: ""), newProduct.displayName , expirationDate.formattedDate())
+        description += String.localizedStringWithFormat(
+          NSLocalizedString(
+            "\nYour subscription to %1$@ will begin when your current subscription expires on %2$@.",
+            comment: ""),
+          newProduct.displayName ,
+          expirationDate.formattedDate())
       }
     } else if renewalInfo.willAutoRenew {
-      description +=  String.localizedStringWithFormat(NSLocalizedString("\nNext billing date: %1$@.", comment: ""), expirationDate.formattedDate())
+      description += String.localizedStringWithFormat(
+        NSLocalizedString("\nNext billing date: %1$@.", comment: ""),
+        expirationDate.formattedDate())
     }
 
     return description
@@ -102,22 +122,38 @@ public struct StatusInfoView: View {
     switch expirationReason {
     case .autoRenewDisabled:
       if expirationDate > Date() {
-        description += String.localizedStringWithFormat(NSLocalizedString("Your subscription to %1$@ will expire on %2$@.", comment: ""), product.displayName, (expirationDate.formattedDate()))
+        description += String.localizedStringWithFormat(
+          NSLocalizedString("Your subscription to %1$@ will expire on %2$@.", comment: ""),
+          product.displayName,
+          expirationDate.formattedDate())
       } else {
-        description +=  String.localizedStringWithFormat(NSLocalizedString("Your subscription to %1$@ expired on %2$@.", comment: ""), product.displayName, (expirationDate.formattedDate()))
+        description += String.localizedStringWithFormat(
+          NSLocalizedString("Your subscription to %1$@ expired on %2$@.", comment: ""),
+          product.displayName,
+          expirationDate.formattedDate())
       }
     case .billingError:
-      description =  String.localizedStringWithFormat(NSLocalizedString("Your subscription to %1$@ was not renewed due to a billing error.", comment: ""), product.displayName)
+      description = String.localizedStringWithFormat(
+        NSLocalizedString("Your subscription to %1$@ was not renewed due to a billing error.", comment: ""),
+        product.displayName)
     case .didNotConsentToPriceIncrease:
       description =
-      String.localizedStringWithFormat(NSLocalizedString("Your subscription to %1$@ was not renewed due to a price increase that you disapproved.", comment: ""), product.displayName)
+        String.localizedStringWithFormat(
+          NSLocalizedString(
+            "Your subscription to %1$@ was not renewed due to a price increase that you disapproved.",
+            comment: ""),
+          product.displayName)
 
     case .productUnavailable:
-      description =  String.localizedStringWithFormat(NSLocalizedString("Your subscription to %1$@ was not renewed because the product is no longer available.", comment: ""), product.displayName)
+      description = String.localizedStringWithFormat(
+        NSLocalizedString("Your subscription to %1$@ was not renewed because the product is no longer available.", comment: ""),
+        product.displayName)
 
     default:
-      
-      description =  String.localizedStringWithFormat(NSLocalizedString("Your subscription to %1$@ was not renewed.", comment: ""), product.displayName)
+
+      description = String.localizedStringWithFormat(
+        NSLocalizedString("Your subscription to %1$@ was not renewed.", comment: ""),
+        product.displayName)
     }
 
     return description

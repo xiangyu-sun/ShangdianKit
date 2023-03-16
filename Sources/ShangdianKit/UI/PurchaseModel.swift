@@ -6,8 +6,8 @@ public final class PurchaseModel: ObservableObject {
   @Published
   var errorTitle: String? = nil
   @Published
-  var isPurchased: Bool = false
-  
+  var isPurchased = false
+
   @MainActor
   func buy(product: Product, store: Store) async {
     do {
@@ -22,5 +22,5 @@ public final class PurchaseModel: ObservableObject {
       errorTitle = error.localizedDescription
     }
   }
-  
+
 }
