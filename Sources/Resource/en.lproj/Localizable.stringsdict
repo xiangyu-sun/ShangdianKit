@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>day_sufix</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@day_sufix@</string>
+		<key>day_sufix</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>u</string>
+			<key>zero</key>
+			<string>day</string>
+			<key>one</key>
+			<string>1 day</string>
+			<key>two</key>
+			<string></string>
+			<key>few</key>
+			<string></string>
+			<key>many</key>
+			<string>days</string>
+			<key>other</key>
+			<string>%u days</string>
+		</dict>
+	</dict>
+	<key>week_sufix</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@week_sufix@</string>
+		<key>week_sufix</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>u</string>
+			<key>zero</key>
+			<string>week</string>
+			<key>one</key>
+			<string>1 week</string>
+			<key>two</key>
+			<string></string>
+			<key>few</key>
+			<string></string>
+			<key>many</key>
+			<string>weeks</string>
+			<key>other</key>
+			<string>%u weeks</string>
+		</dict>
+	</dict>
+	<key>month_sufix</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@month_sufix@</string>
+		<key>month_sufix</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>u</string>
+			<key>one</key>
+			<string>1 month</string>
+			<key>many</key>
+			<string>months</string>
+			<key>other</key>
+			<string>%u months</string>
+		</dict>
+	</dict>
+	<key>year_sufix</key>
+	<dict>
+		<key>NSStringLocalizedFormatKey</key>
+		<string>%#@year_sufix@</string>
+		<key>year_sufix</key>
+		<dict>
+			<key>NSStringFormatSpecTypeKey</key>
+			<string>NSStringPluralRuleType</string>
+			<key>NSStringFormatValueTypeKey</key>
+			<string>u</string>
+			<key>one</key>
+			<string>1 year</string>
+			<key>many</key>
+			<string>years</string>
+			<key>other</key>
+			<string>%u years</string>
+		</dict>
+	</dict>
+</dict>
+</plist>
