@@ -10,22 +10,24 @@ public struct SubscriptionsView: View {
   }
   
   // MARK: Public
-
+  
   public var body: some View {
     Group {
       if let currentSubscription {
         Section(header: Text("My Subscription")) {
           ListCellView(product: currentSubscription, purchasingEnabled: false)
-
+          
           if let status {
             StatusInfoView(
               product: currentSubscription,
               status: status)
           }
         }
+#if os(iOS)
         .listStyle(GroupedListStyle())
+#endif
       }
-
+      
       Section(header: Text("Subscription Options")) {
         if let product = offerProduct, let trial = product.subscription?.introductoryOffer, hasOffer {
           Button {
@@ -38,12 +40,14 @@ public struct SubscriptionsView: View {
           .buttonStyle(.borderedProminent)
           .controlSize(.regular)
         }
-
+        
         ForEach(availableSubscriptions, id: \.id) { product in
           ListCellView(product: product)
         }
       }
+#if os(iOS)
       .listStyle(GroupedListStyle())
+#endif
     }
     .onAppear {
       Task {
@@ -75,22 +79,22 @@ public struct SubscriptionsView: View {
       Alert(title: Text(purchaseModel.errorTitle ?? ""), message: nil, dismissButton: .default(Text("Okay")))
     })
   }
-
+  
   // MARK: Internal
-
+  
   @EnvironmentObject var store: Store
-
+  
   @State var currentSubscription: Product?
   @State var status: Product.SubscriptionInfo.Status?
   @State var hasOffer = false
-
+  
   @State var isShowingError = false
   @StateObject var purchaseModel: PurchaseModel = .init()
-
+  
   var availableSubscriptions: [Product] {
     store.subscriptions.filter { $0.id != currentSubscription?.id }
   }
-
+  
   @MainActor
   func updateOffer() async {
     do {
@@ -102,25 +106,25 @@ public struct SubscriptionsView: View {
       purchaseModel.errorTitle = error.localizedDescription
     }
   }
-
+  
   @MainActor
   func updateSubscriptionStatus() async {
     do {
       let (highestStatus, highestProduct) = try await store.updateSubscriptionStatus()
-
+      
       status = highestStatus
       currentSubscription = highestProduct
     } catch {
       purchaseModel.errorTitle = error.localizedDescription
     }
   }
-
+  
   // MARK: Private
-
+  
   private var offerProduct: Product? {
     store.subscriptions.first(where: { $0.subscription?.introductoryOffer != nil })
   }
-
+  
 }
 
 // MARK: - SubscriptionsView_Previews
