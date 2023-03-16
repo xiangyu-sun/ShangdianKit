@@ -4,7 +4,11 @@ import SwiftUI
 // MARK: - SubscriptionsView
 
 public struct SubscriptionsView: View {
-
+  
+  public init() {
+    
+  }
+  
   // MARK: Public
 
   public var body: some View {

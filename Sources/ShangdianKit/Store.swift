@@ -50,6 +50,10 @@ public class Store: ObservableObject, StoreProtocol {
   // MARK: Public
 
   public struct Configuration {
+    public init(productPlistName: String) {
+      self.productPlistName = productPlistName
+    }
+    
     let productPlistName: String
   }
 
