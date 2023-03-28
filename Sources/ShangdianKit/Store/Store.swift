@@ -2,11 +2,9 @@ import Combine
 import Foundation
 import StoreKit
 
-public typealias ProdictID = String
-
 // MARK: - Store
 
-public class Store: ObservableObject, StoreProtocol {
+public class Store: ObservableObject {
 
   // MARK: Lifecycle
 
@@ -23,7 +21,6 @@ public class Store: ObservableObject, StoreProtocol {
     } else {
       productList = [:]
       subscriptionTiers = []
-      print("product list not found")
     }
 
     // Initialize empty products then do a product request asynchronously to fill them in.
@@ -49,12 +46,16 @@ public class Store: ObservableObject, StoreProtocol {
 
   // MARK: Public
 
-  public struct Configuration {
+  public struct Configuration: Equatable {
+
+    let productPlistName: String
+
+    public static let preview: Configuration = .init(productPlistName: "Preview")
+
     public init(productPlistName: String) {
       self.productPlistName = productPlistName
     }
-    
-    let productPlistName: String
+
   }
 
   public struct SubscriptionTier: Comparable {
@@ -246,9 +247,9 @@ public class Store: ObservableObject, StoreProtocol {
     }
   }
 
+  /// Request products from the App Store using the identifiers defined in the configuration plist
   @MainActor
   func requestProducts() async throws {
-    // Request products from the App Store using the identifiers defined in the Products.plist file.
     let storeProducts = try await Product.products(for: productList.keys)
 
     var newSubscriptions: [Product] = []
